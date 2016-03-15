@@ -257,6 +257,8 @@ summary(modelRf)
 ## tuneValue           1  data.frame list     
 ## obsLevels           5  -none-     character</code></pre>
 <p>An estimate of the performance of the model on the validation data set is obtained:</p>
+<div id="prediction" class="section level3">
+<h3>Prediction</h3>
 <pre class="r"><code>predictRf &lt;- predict(modelRf, testData)
 confusionMatrix(testData$classe, predictRf)
 ## Confusion Matrix and Statistics
@@ -290,15 +292,22 @@ confusionMatrix(testData$classe, predictRf)
 ## Detection Rate         0.2845   0.1912   0.1715   0.1585   0.1830
 ## Detection Prevalence   0.2845   0.1935   0.1743   0.1638   0.1839
 ## Balanced Accuracy      0.9961   0.9911   0.9833   0.9942   0.9990</code></pre>
+</div>
+<div id="accuracy" class="section level3">
+<h3>Accuracy</h3>
 <pre class="r"><code>accuracy &lt;- postResample(predictRf, testData$classe)
 summary(accuracy)
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 ##  0.9856  0.9863  0.9871  0.9871  0.9879  0.9886</code></pre>
+</div>
+<div id="out-of-sample-error" class="section level3">
+<h3>Out of Sample Error</h3>
 <pre class="r"><code>oose &lt;- 1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
 summary(oose)
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 ## 0.01138 0.01138 0.01138 0.01138 0.01138 0.01138</code></pre>
 <p>As a result, the estimated accuracy of the model is 98.886% and the estimated out-of-sample error is 1.13%.</p>
+</div>
 </div>
 <div id="random-forrest-test-set-prediction" class="section level2">
 <h2>Random Forrest Test Set Prediction</h2>
@@ -314,10 +323,7 @@ summary(resultRf)
 <p>Comparing model accuracy of the two models generated, random forests and boosting, random forests model has overall better accuracy, therefore Random Forrest will be used for the prediction. The final random forests model contains 500 trees with 40 variables tried at each split.</p>
 <div id="predict-the-test-set-and-output." class="section level2">
 <h2>Predict the test set and output.</h2>
-<pre class="r"><code>prediction &lt;- as.character(resultRf)
-prediction
-##  [1] &quot;B&quot; &quot;A&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot; &quot;E&quot; &quot;D&quot; &quot;B&quot; &quot;A&quot; &quot;A&quot; &quot;B&quot; &quot;C&quot; &quot;B&quot; &quot;A&quot; &quot;E&quot; &quot;E&quot; &quot;A&quot;
-## [18] &quot;B&quot; &quot;B&quot; &quot;B&quot;</code></pre>
+<pre class="r"><code>prediction &lt;- as.character(resultRf)</code></pre>
 </div>
 </div>
 

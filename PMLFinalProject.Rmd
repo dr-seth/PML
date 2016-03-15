@@ -2,7 +2,7 @@
 title: "PML"
 author: "Seth Dobrin"
 date: "March 14, 2016"
-output: html_document
+output: pdf_document
 ---
 ```{r knitR options, echo=FALSE, tidy = TRUE, collapse= TRUE, message=FALSE, warnings=FALSE, cache=TRUE, results="hide"}
 library(knitr)
@@ -153,16 +153,19 @@ summary(modelRf)
 
 An estimate of the performance of the model on the validation data set is obtained:
 
+###Prediction
 ```{r, Random forrest prediction, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
 predictRf <- predict(modelRf, testData)
 confusionMatrix(testData$classe, predictRf)
 ```
 
+###Accuracy
 ```{r, Random forrest accuracy, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
 accuracy <- postResample(predictRf, testData$classe)
 summary(accuracy)
 ```
 
+###Out of Sample Error
 ```{r, Random forrest confusion, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
 oose <- 1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
 summary(oose)
@@ -187,5 +190,4 @@ Comparing model accuracy of the two models generated, random forests and boostin
 ##Predict the test set and output.
 ```{r, Prediction, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
 prediction <- as.character(resultRf)
-prediction
 ```
