@@ -1,0 +1,191 @@
+---
+title: "PML"
+author: "Seth Dobrin"
+date: "March 14, 2016"
+output: html_document
+---
+```{r knitR options, echo=FALSE, tidy = TRUE, collapse= TRUE, message=FALSE, warnings=FALSE, cache=TRUE, results="hide"}
+library(knitr)
+knitr::opts_chunk$set(echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10)
+```
+
+#Introduction
+
+Devices that register almost every possible move or calorie usage on individuals are nearly ubiquitous. It is now very easy to collect and analyze large amounts of data about activity performed throughout the data and while exercising. However, very little effort has gone into evaluating weather activities are done correctly. 
+
+This project focuses on doing just such an analysis utilizing data collected by Groupware@LES. Six participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions:  
+
+A - exactly correctly  
+B - throwing the elbows to the front  
+C - lifting the dumbbell only halfway  
+D - lowering the dumbbell only halfway  
+E - throwing the hips to the front  
+
+Activity was measured with sensors at the belt, upper arm and forearm.
+
+This data set was used to in conjunction with a machine learning algorithm to predict if a test subject performed an activity correctly. Both Boosted Tree and Random Forrest algorithms were run and tested with the Random Forrest performing better.
+
+#Data Janitor Work
+
+##Load Data
+
+```{r File paths, echo= TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache = TRUE, message = FALSE, warnings=FALSE, error = FALSE}
+trainFileName <- ("~/GitHub/PracticalML/Ppml-training.csv")
+testFileName <- ("~/GitHub/PracticalML/pml-testing.csv")
+trainRaw <- read.csv(trainFileName)
+testRaw <- read.csv(testFileName)
+dim(trainRaw)
+dim(testRaw)
+```
+
+The outcome being tested is the `classe` variable. The
+
+##Preprocess Data
+
+Clean data by removing observations with messing and irrelevant values.
+
+```{r, Clean data 1, echo= TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache = TRUE, message = FALSE, warnings=FALSE, error = FALSE}
+sum(complete.cases(trainRaw))
+```
+
+Removing missing data:
+
+```{r, Clean data 2, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+trainRaw <- trainRaw[, colSums(is.na(trainRaw)) == 0] 
+testRaw <- testRaw[, colSums(is.na(testRaw)) == 0] 
+```
+
+Remove irrelevant data:
+
+```{r, Clean data 3, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+classe <- trainRaw$classe
+trainRemove <- grepl("^X|timestamp|window", names(trainRaw))
+trainRaw <- trainRaw[, !trainRemove]
+trainCleaned <- trainRaw[, sapply(trainRaw, is.numeric)]
+trainCleaned$classe <- classe
+testRemove <- grepl("^X|timestamp|window", names(testRaw))
+testRaw <- testRaw[, !testRemove]
+testCleaned <- testRaw[, sapply(testRaw, is.numeric)]
+dim(trainCleaned)
+dim(testCleaned)
+```
+
+The data set was reduced to 53 variable from 160 variables my eliminating irrelevant variables and variables that contain missing data.
+
+#Data Exploration
+```{R, Plot data, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+require(tabplot)
+cols <- c(1:20, 53)
+tableplot(trainCleaned[,cols], sortCol = "classe")
+cols <- c(21:40, 53)
+tableplot(trainCleaned[,cols], sortCol = "classe")
+cols <- c(41:53)
+tableplot(trainCleaned[,cols], sortCol = "classe")
+```
+
+##Partition the Data
+
+Split the cleaned training set into a training set (70%) and a validation set (30%). The validation data set will be used for cross validation.
+
+```{r, Split data, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+require(caret)
+set.seed(1969) 
+inTrain <- createDataPartition(trainCleaned$classe, p=0.70, list=F)
+trainData <- trainCleaned[inTrain, ]
+testData <- trainCleaned[-inTrain, ]
+```
+
+#Model Build
+
+`Boosted Tree` and `Random Forrest` will be run and compared to find the best model 
+
+##Setup Parallel Processing
+
+```{r, Parallel processing, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+require(parallel); require(doParallel)
+cluster <- makeCluster(detectCores() - 1) 
+registerDoParallel(cluster)
+fitControl <- trainControl(method = "cv",
+                           number = 10,
+                           allowParallel = TRUE)
+```
+
+##Boosted Tree
+
+```{r, Boosted tree, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+require(bst)
+modelDt <- train(classe ~ ., data=trainData, method="bstTree", trControl=fitControl)
+summary(modelDt)
+```
+
+An estimate of the performance of the model on the validation data set is obtained:
+```{r, Boosted tree prediction, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+predictDt <- predict(modelDt, testData)
+confusionMatrix(testData$classe, predictDt)
+```
+
+```{r, Boosted tree accuracy, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+accuracyDt <- postResample(predictDt, testData$classe)
+summary(accuracyDt)
+```
+
+```{r, Boosted tree confusion, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+dt <- 1 - as.numeric(confusionMatrix(testData$classe, predictDt)$overall[1])
+summary(dt)
+```
+
+##Boosted Tree Test Set Prediction
+
+The model is applied to the original testing data set downloaded from the data source. The problem_id column is removed first.
+
+```{r, Boosted Tree result, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+resultDt <- predict(modelDt, testCleaned[,-length(names(testCleaned))])
+summary(resultDt)
+```
+
+##Random Forrest
+```{r, Random forrest, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+require(randomForest)
+modelRf <- train(classe ~ ., data=trainData, method="rf", trControl=fitControl)
+stopCluster(cluster)
+summary(modelRf)
+```
+
+An estimate of the performance of the model on the validation data set is obtained:
+
+```{r, Random forrest prediction, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+predictRf <- predict(modelRf, testData)
+confusionMatrix(testData$classe, predictRf)
+```
+
+```{r, Random forrest accuracy, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+accuracy <- postResample(predictRf, testData$classe)
+summary(accuracy)
+```
+
+```{r, Random forrest confusion, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+oose <- 1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
+summary(oose)
+```
+
+As a result, the estimated accuracy of the model is 98.886% and the estimated out-of-sample error is 1.13%.
+
+##Random Forrest Test Set Prediction
+
+The model is applied to the original testing data set downloaded from the data source. The problem_id column is removed first.
+
+```{r, Random forrest result, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+resultRf <- predict(modelRf, testCleaned[, -length(names(testCleaned))])
+summary(resultRf)
+```
+
+#Final model and prediction
+
+Comparing model accuracy of the two models generated, random forests and boosting, random forests model has overall better accuracy, therefore Random Forrest will be used for the prediction. The final random forests model contains 500 trees with 40 variables tried at each split. 
+
+
+##Predict the test set and output.
+```{r, Prediction, echo=TRUE, tidy = TRUE, collapse= TRUE, strip.white = TRUE, verbose = FALSE, cache=TRUE, message=FALSE, warnings=FALSE, error = FALSE, fig.width=10}
+prediction <- as.character(resultRf)
+prediction
+```
